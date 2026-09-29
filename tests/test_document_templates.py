@@ -1,0 +1,90 @@
+import asyncio
+from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
+
+import pytest
+from docx import Document
+
+from word_document_server.tools.document_tools import create_document
+
+
+def _make_template(path: Path) -> None:
+    doc = Document()
+    doc.add_paragraph("Corporate template content")
+    doc.styles["Normal"].font.name = "Aptos"
+    doc.save(path)
+
+
+def _make_dotx_template(docx_path: Path, dotx_path: Path) -> None:
+    document_content_type = b"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+    template_content_type = b"application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"
+
+    with ZipFile(docx_path, "r") as source, ZipFile(dotx_path, "w", ZIP_DEFLATED) as template:
+        for entry in source.infolist():
+            content = source.read(entry.filename)
+            if entry.filename == "[Content_Types].xml":
+                content = content.replace(document_content_type, template_content_type)
+            template.writestr(entry, content)
+
+
+@pytest.mark.parametrize("template_extension", [".docx", ".dotx"])
+def test_create_document_from_template_preserves_content_and_styles(
+    tmp_path: Path, template_extension: str
+):
+    template_docx = tmp_path / "corporate-template.docx"
+    _make_template(template_docx)
+    template_path = template_docx
+    if template_extension == ".dotx":
+        template_path = tmp_path / "corporate-template.dotx"
+        _make_dotx_template(template_docx, template_path)
+
+    output_path = tmp_path / "created-document"
+    result = asyncio.run(
+        create_document(
+            str(output_path),
+            title="Template-based document",
+            author="Test author",
+            template_filename=str(template_path),
+        )
+    )
+
+    created_document = Document(output_path.with_suffix(".docx"))
+    assert result == f"Document {output_path}.docx created successfully"
+    assert created_document.paragraphs[0].text == "Corporate template content"
+    assert created_document.styles["Normal"].font.name == "Aptos"
+    assert created_document.core_properties.title == "Template-based document"
+    assert created_document.core_properties.author == "Test author"
+
+
+def test_create_document_without_template_remains_blank(tmp_path: Path):
+    output_path = tmp_path / "blank.docx"
+
+    result = asyncio.run(create_document(str(output_path)))
+
+    assert result == f"Document {output_path} created successfully"
+    assert Document(output_path).paragraphs == []
+
+
+def test_create_document_rejects_missing_template(tmp_path: Path):
+    output_path = tmp_path / "created.docx"
+    template_path = tmp_path / "missing.docx"
+
+    result = asyncio.run(
+        create_document(str(output_path), template_filename=str(template_path))
+    )
+
+    assert result == f"Template {template_path} does not exist"
+    assert not output_path.exists()
+
+
+def test_create_document_rejects_unsupported_template_extension(tmp_path: Path):
+    template_path = tmp_path / "template.dot"
+    template_path.touch()
+
+    result = asyncio.run(
+        create_document(
+            str(tmp_path / "created.docx"), template_filename=str(template_path)
+        )
+    )
+
+    assert "Template must be a .docx or .dotx file" in result
