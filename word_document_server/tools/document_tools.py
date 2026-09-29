@@ -3,7 +3,9 @@ Document creation and manipulation tools for Word Document Server.
 """
 import os
 import json
+from io import BytesIO
 from typing import Dict, List, Optional, Any
+from zipfile import ZIP_DEFLATED, ZipFile
 from docx import Document
 
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
@@ -11,13 +13,46 @@ from word_document_server.utils.document_utils import get_document_properties, e
 from word_document_server.core.styles import ensure_heading_style, ensure_table_style
 
 
-async def create_document(filename: str, title: Optional[str] = None, author: Optional[str] = None) -> str:
+def _load_template(template_filename: str):
+    extension = os.path.splitext(template_filename)[1].lower()
+    if extension == ".docx":
+        return Document(template_filename)
+    if extension != ".dotx":
+        raise ValueError("Template must be a .docx or .dotx file")
+
+    template_content_type = b"application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"
+    document_content_type = b"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+
+    with ZipFile(template_filename, "r") as template:
+        content_types = template.read("[Content_Types].xml")
+        if template_content_type not in content_types:
+            raise ValueError("DOTX template has an unexpected document content type")
+
+        converted_package = BytesIO()
+        with ZipFile(converted_package, "w", ZIP_DEFLATED) as converted:
+            converted.comment = template.comment
+            for entry in template.infolist():
+                content = template.read(entry.filename)
+                if entry.filename == "[Content_Types].xml":
+                    content = content.replace(template_content_type, document_content_type)
+                converted.writestr(entry, content)
+
+    return Document(BytesIO(converted_package.getvalue()))
+
+
+async def create_document(
+    filename: str,
+    title: Optional[str] = None,
+    author: Optional[str] = None,
+    template_filename: Optional[str] = None,
+) -> str:
     """Create a new Word document with optional metadata.
     
     Args:
         filename: Name of the document to create (with or without .docx extension)
         title: Optional title for the document metadata
         author: Optional author for the document metadata
+        template_filename: Optional .docx or .dotx template to use
     """
     filename = ensure_docx_extension(filename)
     
@@ -27,7 +62,12 @@ async def create_document(filename: str, title: Optional[str] = None, author: Op
         return f"Cannot create document: {error_message}"
     
     try:
-        doc = Document()
+        if template_filename:
+            if not os.path.isfile(template_filename):
+                return f"Template {template_filename} does not exist"
+            doc = _load_template(template_filename)
+        else:
+            doc = Document()
         
         # Set properties if provided
         if title:

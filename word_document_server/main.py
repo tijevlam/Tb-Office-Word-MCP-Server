@@ -98,9 +98,16 @@ def register_tools():
             destructiveHint=True,
         ),
     )
-    def create_document(filename: str, title: str = None, author: str = None):
+    def create_document(
+        filename: str,
+        title: str = None,
+        author: str = None,
+        template_filename: str = None,
+    ):
         """Create a new Word document with optional metadata."""
-        return document_tools.create_document(filename, title, author)
+        return document_tools.create_document(
+            filename, title, author, template_filename
+        )
     
     @mcp.tool(
         annotations=ToolAnnotations(
