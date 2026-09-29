@@ -15,16 +15,16 @@ def check_prerequisites():
     """
     # Check Python version
     python_version = sys.version_info
-    python_ok = python_version.major >= 3 and python_version.minor >= 8
+    python_ok = python_version.major > 3 or (python_version.major == 3 and python_version.minor >= 11)
     
     # Check if uv/uvx is installed
     uv_installed = shutil.which("uv") is not None
     uvx_installed = shutil.which("uvx") is not None
     
-    # Check if word-document-server is already installed via pip
+    # Check if the PyPI package is already installed via pip
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "show", "word-document-server"],
+            [sys.executable, "-m", "pip", "show", "tb-office-word-mcp-server"],
             capture_output=True,
             text=True,
             check=False
@@ -82,7 +82,7 @@ def setup_venv():
     Function to set up Python virtual environment
     
     Features:
-    - Checks if Python version meets requirements (3.8+)
+    - Checks if Python version meets requirements (3.11+)
     - Creates Python virtual environment (if it doesn't exist)
     - Installs required dependencies in the newly created virtual environment
     
@@ -92,8 +92,8 @@ def setup_venv():
     """
     # Check Python version
     python_version = sys.version_info
-    if python_version.major < 3 or (python_version.major == 3 and python_version.minor < 8):
-        print("Error: Python 3.8 or higher is required.")
+    if python_version.major < 3 or (python_version.major == 3 and python_version.minor < 11):
+        print("Error: Python 3.11 or higher is required.")
         sys.exit(1)
     
     # Get absolute path of the directory containing the current script
@@ -263,7 +263,7 @@ def generate_mcp_config_uvx(transport_config):
         "mcpServers": {
             "word-document-server": {
                 "command": "uvx",
-                "args": ["--from", "word-mcp-server", "word_mcp_server"],
+                "args": ["--from", "tb-office-word-mcp-server", "word_mcp_server"],
                 "env": env
             }
         }
@@ -332,13 +332,13 @@ def install_from_pypi():
     
     Returns: True if successful, False otherwise
     """
-    print("\nInstalling word-document-server from PyPI...")
+    print("\nInstalling tb-office-word-mcp-server from PyPI...")
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "word-mcp-server"], check=True)
-        print("word-mcp-server successfully installed from PyPI!")
+        subprocess.run([sys.executable, "-m", "pip", "install", "tb-office-word-mcp-server"], check=True)
+        print("tb-office-word-mcp-server successfully installed from PyPI!")
         return True
     except subprocess.CalledProcessError:
-        print("Failed to install word-mcp-server from PyPI.")
+        print("Failed to install tb-office-word-mcp-server from PyPI.")
         return False
 
 def print_config_instructions(config_path, transport_config):
@@ -430,7 +430,7 @@ if __name__ == '__main__':
     python_ok, uv_installed, uvx_installed, word_server_installed = check_prerequisites()
     
     if not python_ok:
-        print("Error: Python 3.8 or higher is required.")
+        print("Error: Python 3.11 or higher is required.")
         sys.exit(1)
     
     print("Word Document MCP Server Setup (Multi-Transport)")
@@ -444,7 +444,7 @@ if __name__ == '__main__':
     
     # If word-document-server is already installed, offer config options
     if word_server_installed:
-        print("word-document-server is already installed via pip.")
+        print("tb-office-word-mcp-server is already installed via pip.")
         
         if uvx_installed:
             print("\nOptions:")
@@ -487,7 +487,7 @@ if __name__ == '__main__':
     
     # If word-document-server is not installed, offer installation options
     else:
-        print("word-document-server is not installed.")
+        print("tb-office-word-mcp-server is not installed.")
         
         print("\nOptions:")
         print("1. Install from PyPI (recommended)")

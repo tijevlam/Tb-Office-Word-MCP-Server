@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "office-word-mcp-server"
+name = "tb-office-word-mcp-server"
 version = "1.1.11"
-description = "MCP server for manipulating Microsoft Word documents"
+description = "Traffic Builders' MCP server for creating and manipulating Microsoft Word documents"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-    {name = "GongRzhe", email = "gongrzhe@gmail.com"}
+    {name = "Traffic Builders"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -22,12 +22,15 @@ dependencies = [
     "fastmcp>=2.8.1",
     "msoffcrypto-tool>=5.4.2",
     "docx2pdf>=0.1.8",
-    "pytest>=8.4.2",
+    "python-dotenv",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=8.4.2"]
+
 [project.urls]
-"Homepage" = "https://github.com/GongRzhe/Office-Word-MCP-Server.git"
-"Bug Tracker" = "https://github.com/GongRzhe/Office-Word-MCP-Server.git/issues"
+"Homepage" = "https://github.com/tijevlam/Tb-Office-Word-MCP-Server"
+"Bug Tracker" = "https://github.com/tijevlam/Tb-Office-Word-MCP-Server/issues"
 
 [tool.hatch.build.targets.wheel]
 only-include = [
