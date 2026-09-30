@@ -1477,7 +1477,7 @@ wheels = [
 
 [[package]]
 name = "tb-office-word-mcp-server"
-version = "1.2.0"
+version = "1.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "docx2pdf" },

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tb-office-word-mcp-server"
-version = "1.2.0"
+version = "1.2.1"
 description = "Traffic Builders' MCP server for creating and manipulating Microsoft Word documents"
 readme = "README.md"
 license = {file = "LICENSE"}
