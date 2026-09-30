@@ -131,11 +131,13 @@ async def create_document(
     # Check if file is writeable
     is_writeable, error_message = check_file_writeable(filename)
     if not is_writeable:
+        logger.error("Cannot create document %s: %s", filename, error_message)
         return f"Cannot create document: {error_message}"
     
     try:
         if template_filename:
             if not os.path.isfile(template_filename):
+                logger.error("Template %s does not exist", template_filename)
                 available = [os.path.basename(t) for t in _list_templates()]
                 hint = f". Available templates: {', '.join(available)}" if available else ""
                 return f"Template {template_filename} does not exist{hint}"
@@ -158,6 +160,7 @@ async def create_document(
         
         return f"Document {filename} created successfully"
     except Exception as e:
+        logger.exception("Failed to create document %s (template: %s)", filename, template_filename)
         return f"Failed to create document: {str(e)}"
 
 
