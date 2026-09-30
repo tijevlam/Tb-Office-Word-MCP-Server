@@ -181,3 +181,24 @@ def test_debug_logging_shows_search_and_found_templates(tmp_path: Path, monkeypa
 
     assert "directory" in caplog.text
     assert "matched 'report'" in caplog.text
+
+
+def test_output_dir_resolves_relative_filenames(tmp_path: Path, monkeypatch):
+    output_dir = tmp_path / "out" / "docx"
+    monkeypatch.setenv("WORD_OUTPUT_DIR", str(output_dir))
+    monkeypatch.delenv("WORD_DOCUMENT_TEMPLATE", raising=False)
+
+    result = asyncio.run(create_document("report"))
+
+    assert (output_dir / "report.docx").exists()
+    assert str(output_dir) in result
+
+
+def test_output_dir_keeps_absolute_filenames(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("WORD_OUTPUT_DIR", str(tmp_path / "out"))
+    monkeypatch.delenv("WORD_DOCUMENT_TEMPLATE", raising=False)
+    target = tmp_path / "elsewhere.docx"
+
+    asyncio.run(create_document(str(target)))
+
+    assert target.exists()

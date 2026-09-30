@@ -182,7 +182,7 @@ python setup_mcp.py
 - a path to a single `.docx`/`.dotx` template: used by default for `create_document`;
 - a directory containing multiple templates: pick one by name with `create_document(..., template_filename="report")` (extension optional), and discover them with the `list_templates` tool.
 
-Multiple entries can be combined with `;` on Windows or `:` on macOS/Linux. An explicit `template_filename` that is an existing path always wins. Set `MCP_DEBUG=1` in the same `env` block to enable debug logging (written to stderr).
+Multiple entries can be combined with `;` on Windows or `:` on macOS/Linux. An explicit `template_filename` that is an existing path always wins. `WORD_OUTPUT_DIR` is also optional: relative filenames (for creating and editing) are resolved against this directory, which is created when missing; absolute paths are left untouched. At startup the server logs the absolute template and output locations it uses. Set `MCP_DEBUG=1` in the same `env` block to enable debug logging (written to stderr).
 
 2. Configuration file locations:
 

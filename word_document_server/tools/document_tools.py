@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 from zipfile import ZIP_DEFLATED, ZipFile
 from docx import Document
 
-from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
+from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy, get_output_dir, OUTPUT_DIR_ENV_VAR
 from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text, insert_line_or_paragraph_near_text
 from word_document_server.core.styles import ensure_heading_style, ensure_table_style
 
@@ -54,7 +54,7 @@ def _template_env_entries() -> List[str]:
     logger.debug("%s=%r -> %d entries", TEMPLATE_ENV_VAR, raw, len(entries))
     for entry in entries:
         kind = "directory" if os.path.isdir(entry) else "file" if os.path.isfile(entry) else "NOT FOUND"
-        logger.debug("  template entry %s: %s", entry, kind)
+        logger.debug("  template entry %s (absolute: %s): %s", entry, os.path.abspath(entry), kind)
     return entries
 
 
@@ -126,7 +126,11 @@ async def create_document(
             the WORD_DOCUMENT_TEMPLATE directories (see list_templates)
     """
     filename = ensure_docx_extension(filename)
+    output_dir = get_output_dir()
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     template_filename = _resolve_template(template_filename)
+    logger.debug("create_document: output=%s template=%s", os.path.abspath(filename), template_filename)
     
     # Check if file is writeable
     is_writeable, error_message = check_file_writeable(filename)
@@ -162,6 +166,28 @@ async def create_document(
     except Exception as e:
         logger.exception("Failed to create document %s (template: %s)", filename, template_filename)
         return f"Failed to create document: {str(e)}"
+
+
+def log_configuration() -> None:
+    """Log where templates are searched and where documents are written (called at startup)."""
+    logger.info("Working directory: %s", os.getcwd())
+    entries = _template_env_entries()
+    if not entries:
+        logger.info("%s not set: documents are created blank", TEMPLATE_ENV_VAR)
+    for entry in entries:
+        path = os.path.abspath(entry)
+        if os.path.isdir(entry):
+            count = len([n for n in os.listdir(entry) if n.lower().endswith(TEMPLATE_EXTENSIONS) and not n.startswith("~$")])
+            logger.info("Template directory %s: %d templates", path, count)
+        elif os.path.isfile(entry):
+            logger.info("Template file %s (default)", path)
+        else:
+            logger.warning("Template entry %s does not exist", path)
+    output_dir = get_output_dir()
+    if output_dir:
+        logger.info("Output directory (%s): %s [%s]", OUTPUT_DIR_ENV_VAR, os.path.abspath(output_dir), "exists" if os.path.isdir(output_dir) else "will be created")
+    else:
+        logger.info("%s not set: relative filenames resolve against %s", OUTPUT_DIR_ENV_VAR, os.getcwd())
 
 
 async def list_templates() -> str:

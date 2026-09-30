@@ -718,6 +718,7 @@ def run_server():
     
     # Setup logging
     setup_logging(config['debug'])
+    document_tools.log_configuration()
     
     # Register all tools
     register_tools()

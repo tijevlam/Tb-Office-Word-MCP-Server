@@ -2,8 +2,11 @@
 File utility functions for Word Document Server.
 """
 import os
+import logging
 from typing import Tuple, Optional
 import shutil
+
+logger = logging.getLogger(__name__)
 
 
 def check_file_writeable(filepath: str) -> Tuple[bool, str]:
@@ -70,9 +73,19 @@ def create_document_copy(source_path: str, dest_path: Optional[str] = None) -> T
         return False, f"Failed to copy document: {str(e)}", None
 
 
+OUTPUT_DIR_ENV_VAR = "WORD_OUTPUT_DIR"
+
+
+def get_output_dir() -> Optional[str]:
+    """Directory configured through WORD_OUTPUT_DIR, or None when not set."""
+    raw = os.getenv(OUTPUT_DIR_ENV_VAR, "").strip()
+    return os.path.expanduser(raw) if raw else None
+
+
 def ensure_docx_extension(filename: str) -> str:
     """
-    Ensure filename has .docx extension.
+    Ensure filename has .docx extension and, when WORD_OUTPUT_DIR is set,
+    resolve relative filenames against that directory.
     
     Args:
         filename: The filename to check
@@ -81,5 +94,10 @@ def ensure_docx_extension(filename: str) -> str:
         Filename with .docx extension
     """
     if not filename.endswith('.docx'):
-        return filename + '.docx'
+        filename = filename + '.docx'
+    output_dir = get_output_dir()
+    if output_dir and not os.path.isabs(filename):
+        resolved = os.path.join(output_dir, filename)
+        logger.debug("Resolved %r to %s via %s", filename, resolved, OUTPUT_DIR_ENV_VAR)
+        return resolved
     return filename
