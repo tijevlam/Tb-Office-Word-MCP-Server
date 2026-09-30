@@ -1,12 +1,6 @@
-# Office-Word-MCP-Server
-
-[![smithery badge](https://smithery.ai/badge/@GongRzhe/Office-Word-MCP-Server)](https://smithery.ai/server/@GongRzhe/Office-Word-MCP-Server)
+# TB Office Word MCP Server
 
 A Model Context Protocol (MCP) server for creating, reading, and manipulating Microsoft Word documents. This server enables AI assistants to work with Word documents through a standardized interface, providing rich document editing capabilities.
-
-<a href="https://glama.ai/mcp/servers/@GongRzhe/Office-Word-MCP-Server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@GongRzhe/Office-Word-MCP-Server/badge" alt="Office Word Server MCP server" />
-</a>
 
 ![](https://badge.mcpx.dev?type=server "MCP Server")
 
@@ -31,6 +25,7 @@ The server features a modular architecture that separates concerns into core fun
 ### Document Management
 
 - Create new Word documents with metadata
+- Create Word documents from `.docx` or `.dotx` templates
 - Extract text and analyze document structure
 - View document properties and statistics
 - List available documents in a directory
@@ -113,25 +108,17 @@ The server features a modular architecture that separates concerns into core fun
 
 ## Installation
 
-### Installing via Smithery
-
-To install Office Word Document Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@GongRzhe/Office-Word-MCP-Server):
-
-```bash
-npx -y @smithery/cli install @GongRzhe/Office-Word-MCP-Server --client claude
-```
-
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - pip package manager
 
 ### Basic Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/GongRzhe/Office-Word-MCP-Server.git
-cd Office-Word-MCP-Server
+git clone https://github.com/tijevlam/Tb-Office-Word-MCP-Server.git
+cd Tb-Office-Word-MCP-Server
 
 # Install dependencies
 pip install -r requirements.txt
@@ -163,7 +150,10 @@ python setup_mcp.py
   "mcpServers": {
     "word-document-server": {
       "command": "python",
-      "args": ["/path/to/word_mcp_server.py"]
+      "args": ["/path/to/word_mcp_server.py"],
+      "env": {
+        "WORD_DOCUMENT_TEMPLATE": "/path/to/corporate-template.dotx"
+      }
     }
   }
 }
@@ -178,11 +168,16 @@ python setup_mcp.py
   "mcpServers": {
     "word-document-server": {
       "command": "uvx",
-      "args": ["--from", "office-word-mcp-server", "word_mcp_server"]
+      "args": ["--from", "tb-office-word-mcp-server", "word_mcp_server"],
+      "env": {
+        "WORD_DOCUMENT_TEMPLATE": "/path/to/corporate-template.dotx"
+      }
     }
   }
 }
 ```
+
+`WORD_DOCUMENT_TEMPLATE` is optional. When set, it is used for document creation unless a tool call supplies its own `template_filename`; the path must be accessible to the server and point to a `.docx` or `.dotx` file.
 
 2. Configuration file locations:
 
@@ -196,6 +191,7 @@ python setup_mcp.py
 Once configured, you can ask Claude to perform operations like:
 
 - "Create a new document called 'report.docx' with a title page"
+- "Create 'report.docx' using 'corporate-template.dotx' as the template"
 - "Add a heading and three paragraphs to my document"
 - "Add my name in Helvetica 36pt bold at the top of the document"
 - "Add a section heading 'Summary' in Helvetica 14pt bold with a bottom border"
