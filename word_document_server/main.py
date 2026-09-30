@@ -40,7 +40,8 @@ def get_transport_config():
         'host': '0.0.0.0',
         'port': 8000,
         'path': '/mcp',
-        'sse_path': '/sse'
+        'sse_path': '/sse',
+        'debug': os.getenv('MCP_DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
     }
     
     # Override with environment variables if provided
@@ -76,7 +77,7 @@ def setup_logging(debug_mode):
             level=logging.DEBUG,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-        print("Debug logging enabled")
+        print("Debug logging enabled", file=sys.stderr)
     else:
         logging.basicConfig(
             level=logging.INFO,
@@ -109,6 +110,16 @@ def register_tools():
             filename, title, author, template_filename
         )
     
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="List Word Templates",
+            readOnlyHint=True,
+        ),
+    )
+    def list_templates():
+        """List available Word templates (from the WORD_DOCUMENT_TEMPLATE file or directory)."""
+        return document_tools.list_templates()
+
     @mcp.tool(
         annotations=ToolAnnotations(
             title="Copy Word Document",
@@ -706,7 +717,7 @@ def run_server():
     config = get_transport_config()
     
     # Setup logging
-    # setup_logging(config['debug'])
+    setup_logging(config['debug'])
     
     # Register all tools
     register_tools()
@@ -715,8 +726,8 @@ def run_server():
     transport_type = config['transport']
     print(f"Starting Word Document MCP Server with {transport_type} transport...")
     
-    # if config['debug']:
-    #     print(f"Configuration: {config}")
+    if config['debug']:
+        print(f"Configuration: {config}", file=sys.stderr)
     
     try:
         if transport_type == 'stdio':
