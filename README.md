@@ -177,7 +177,12 @@ python setup_mcp.py
 }
 ```
 
-`WORD_DOCUMENT_TEMPLATE` is optional. When set, it is used for document creation unless a tool call supplies its own `template_filename`; the path must be accessible to the server and point to a `.docx` or `.dotx` file.
+`WORD_DOCUMENT_TEMPLATE` is optional and accepts either:
+
+- a path to a single `.docx`/`.dotx` template: used by default for `create_document`;
+- a directory containing multiple templates: pick one by name with `create_document(..., template_filename="report")` (extension optional), and discover them with the `list_templates` tool.
+
+Multiple entries can be combined with `;` on Windows or `:` on macOS/Linux. An explicit `template_filename` that is an existing path always wins. Set `MCP_DEBUG=1` in the same `env` block to enable debug logging (written to stderr).
 
 2. Configuration file locations:
 

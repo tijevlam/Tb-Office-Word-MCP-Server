@@ -3,6 +3,7 @@ Document creation and manipulation tools for Word Document Server.
 """
 import os
 import json
+import logging
 from io import BytesIO
 from typing import Dict, List, Optional, Any
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -11,6 +12,8 @@ from docx import Document
 from word_document_server.utils.file_utils import check_file_writeable, ensure_docx_extension, create_document_copy
 from word_document_server.utils.document_utils import get_document_properties, extract_document_text, get_document_structure, get_document_xml, insert_header_near_text, insert_line_or_paragraph_near_text
 from word_document_server.core.styles import ensure_heading_style, ensure_table_style
+
+logger = logging.getLogger(__name__)
 
 
 def _load_template(template_filename: str):
@@ -40,6 +43,73 @@ def _load_template(template_filename: str):
     return Document(BytesIO(converted_package.getvalue()))
 
 
+TEMPLATE_ENV_VAR = "WORD_DOCUMENT_TEMPLATE"
+TEMPLATE_EXTENSIONS = (".docx", ".dotx")
+
+
+def _template_env_entries() -> List[str]:
+    """Entries of WORD_DOCUMENT_TEMPLATE: files and/or directories separated by os.pathsep."""
+    raw = os.getenv(TEMPLATE_ENV_VAR, "")
+    entries = [os.path.expanduser(p.strip()) for p in raw.split(os.pathsep) if p.strip()]
+    logger.debug("%s=%r -> %d entries", TEMPLATE_ENV_VAR, raw, len(entries))
+    for entry in entries:
+        kind = "directory" if os.path.isdir(entry) else "file" if os.path.isfile(entry) else "NOT FOUND"
+        logger.debug("  template entry %s: %s", entry, kind)
+    return entries
+
+
+def _template_directories() -> List[str]:
+    return [p for p in _template_env_entries() if os.path.isdir(p)]
+
+
+def _list_templates() -> List[str]:
+    """All template files reachable through WORD_DOCUMENT_TEMPLATE."""
+    found: List[str] = []
+    for entry in _template_env_entries():
+        if os.path.isfile(entry):
+            found.append(entry)
+        elif os.path.isdir(entry):
+            for name in sorted(os.listdir(entry)):
+                if name.startswith("~$"):
+                    continue
+                if name.lower().endswith(TEMPLATE_EXTENSIONS):
+                    found.append(os.path.join(entry, name))
+                else:
+                    logger.debug("  skipping %s (not .docx/.dotx)", os.path.join(entry, name))
+    logger.debug("Templates found: %s", found)
+    return found
+
+
+def _resolve_template(template_filename: Optional[str]) -> Optional[str]:
+    """Resolve a template name/path to a file, or None when no template applies.
+
+    Without a name, the first file entry of WORD_DOCUMENT_TEMPLATE is the default.
+    With a name, an existing path wins; otherwise it is looked up (with or without
+    extension) in the configured template directories and single-file entries.
+    """
+    if not template_filename:
+        for entry in _template_env_entries():
+            if os.path.isfile(entry):
+                logger.debug("No template requested; using default %s", entry)
+                return entry
+        logger.debug("No template requested and no default file configured; using blank document")
+        return None
+
+    logger.debug("Resolving template %r", template_filename)
+    if os.path.isfile(template_filename):
+        logger.debug("  %r is an existing path", template_filename)
+        return template_filename
+
+    wanted = os.path.basename(template_filename).lower()
+    for candidate in _list_templates():
+        base = os.path.basename(candidate).lower()
+        if wanted in (base, os.path.splitext(base)[0]):
+            logger.debug("  matched %r to %s", template_filename, candidate)
+            return candidate
+    logger.debug("  no template matched %r", template_filename)
+    return template_filename
+
+
 async def create_document(
     filename: str,
     title: Optional[str] = None,
@@ -52,11 +122,11 @@ async def create_document(
         filename: Name of the document to create (with or without .docx extension)
         title: Optional title for the document metadata
         author: Optional author for the document metadata
-        template_filename: Optional .docx or .dotx template to use
+        template_filename: Optional template: a path, or the name of a template found in
+            the WORD_DOCUMENT_TEMPLATE directories (see list_templates)
     """
     filename = ensure_docx_extension(filename)
-    if template_filename is None:
-        template_filename = os.getenv("WORD_DOCUMENT_TEMPLATE")
+    template_filename = _resolve_template(template_filename)
     
     # Check if file is writeable
     is_writeable, error_message = check_file_writeable(filename)
@@ -66,7 +136,9 @@ async def create_document(
     try:
         if template_filename:
             if not os.path.isfile(template_filename):
-                return f"Template {template_filename} does not exist"
+                available = [os.path.basename(t) for t in _list_templates()]
+                hint = f". Available templates: {', '.join(available)}" if available else ""
+                return f"Template {template_filename} does not exist{hint}"
             doc = _load_template(template_filename)
         else:
             doc = Document()
@@ -87,6 +159,20 @@ async def create_document(
         return f"Document {filename} created successfully"
     except Exception as e:
         return f"Failed to create document: {str(e)}"
+
+
+async def list_templates() -> str:
+    """List the templates available through the WORD_DOCUMENT_TEMPLATE environment variable."""
+    if not _template_env_entries():
+        return f"No templates configured. Set {TEMPLATE_ENV_VAR} to a template file or a directory."
+    templates = _list_templates()
+    if not templates:
+        return f"No .docx or .dotx templates found via {TEMPLATE_ENV_VAR}"
+    default = _resolve_template(None)
+    lines = [f"Found {len(templates)} templates:"]
+    for t in templates:
+        lines.append(f"- {os.path.basename(t)} ({t})" + (" [default]" if t == default else ""))
+    return "\n".join(lines)
 
 
 async def get_document_info(filename: str) -> str:

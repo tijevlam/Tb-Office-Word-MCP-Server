@@ -14,3 +14,4 @@ wheels/
 .venv
 .env.example
 .idea
+.pypirc.txt
