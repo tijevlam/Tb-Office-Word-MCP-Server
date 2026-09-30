@@ -22,7 +22,8 @@ from word_document_server.tools import (
     protection_tools,
     footnote_tools,
     extended_document_tools,
-    comment_tools
+    comment_tools,
+    template_tools
 )
 from word_document_server.tools.content_tools import replace_paragraph_block_below_header_tool
 from word_document_server.tools.content_tools import replace_block_between_manual_anchors_tool
@@ -105,7 +106,7 @@ def register_tools():
         author: str = None,
         template_filename: str = None,
     ):
-        """Create a new Word document with optional metadata."""
+        """Create a new Word document with optional metadata. When a template is used, call list_template_fields and fill_template to fill it in place; add_paragraph only appends at the end."""
         return document_tools.create_document(
             filename, title, author, template_filename
         )
@@ -119,6 +120,26 @@ def register_tools():
     def list_templates():
         """List available Word templates (from the WORD_DOCUMENT_TEMPLATE file or directory)."""
         return document_tools.list_templates()
+
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="List Template Fields",
+            readOnlyHint=True,
+        ),
+    )
+    def list_template_fields(filename: str):
+        """Inspect a document made from a template: content controls, placeholders, text boxes, headers/footers. Use this before fill_template."""
+        return template_tools.list_template_fields(filename)
+
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="Fill Template",
+            destructiveHint=True,
+        ),
+    )
+    def fill_template(filename: str, replacements: dict[str, str]):
+        """Fill a template IN PLACE (title page, headers/footers, placeholders, content controls). Prefer this over add_paragraph, which only appends at the end. Keys are content control tags/aliases or the literal placeholder text."""
+        return template_tools.fill_template(filename, replacements)
 
     @mcp.tool(
         annotations=ToolAnnotations(
