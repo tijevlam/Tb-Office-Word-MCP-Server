@@ -56,13 +56,46 @@ def test_create_document_from_template_preserves_content_and_styles(
     assert created_document.core_properties.author == "Test author"
 
 
-def test_create_document_without_template_remains_blank(tmp_path: Path):
+def test_create_document_without_template_remains_blank(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("WORD_DOCUMENT_TEMPLATE", raising=False)
     output_path = tmp_path / "blank.docx"
 
     result = asyncio.run(create_document(str(output_path)))
 
     assert result == f"Document {output_path} created successfully"
     assert Document(output_path).paragraphs == []
+
+
+def test_create_document_uses_environment_template_by_default(
+    tmp_path: Path, monkeypatch
+):
+    template_path = tmp_path / "default-template.docx"
+    _make_template(template_path)
+    monkeypatch.setenv("WORD_DOCUMENT_TEMPLATE", str(template_path))
+    output_path = tmp_path / "created-from-default.docx"
+
+    result = asyncio.run(create_document(str(output_path)))
+
+    assert result == f"Document {output_path} created successfully"
+    assert Document(output_path).paragraphs[0].text == "Corporate template content"
+
+
+def test_explicit_template_overrides_environment_template(tmp_path: Path, monkeypatch):
+    default_template = tmp_path / "default-template.docx"
+    explicit_template = tmp_path / "explicit-template.docx"
+    _make_template(default_template)
+    explicit_doc = Document()
+    explicit_doc.add_paragraph("Explicit template content")
+    explicit_doc.save(explicit_template)
+    monkeypatch.setenv("WORD_DOCUMENT_TEMPLATE", str(default_template))
+    output_path = tmp_path / "created-from-explicit.docx"
+
+    result = asyncio.run(
+        create_document(str(output_path), template_filename=str(explicit_template))
+    )
+
+    assert result == f"Document {output_path} created successfully"
+    assert Document(output_path).paragraphs[0].text == "Explicit template content"
 
 
 def test_create_document_rejects_missing_template(tmp_path: Path):

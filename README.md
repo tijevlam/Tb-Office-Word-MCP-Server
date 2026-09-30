@@ -150,7 +150,10 @@ python setup_mcp.py
   "mcpServers": {
     "word-document-server": {
       "command": "python",
-      "args": ["/path/to/word_mcp_server.py"]
+      "args": ["/path/to/word_mcp_server.py"],
+      "env": {
+        "WORD_DOCUMENT_TEMPLATE": "/path/to/corporate-template.dotx"
+      }
     }
   }
 }
@@ -165,11 +168,16 @@ python setup_mcp.py
   "mcpServers": {
     "word-document-server": {
       "command": "uvx",
-      "args": ["--from", "tb-office-word-mcp-server", "word_mcp_server"]
+      "args": ["--from", "tb-office-word-mcp-server", "word_mcp_server"],
+      "env": {
+        "WORD_DOCUMENT_TEMPLATE": "/path/to/corporate-template.dotx"
+      }
     }
   }
 }
 ```
+
+`WORD_DOCUMENT_TEMPLATE` is optional. When set, it is used for document creation unless a tool call supplies its own `template_filename`; the path must be accessible to the server and point to a `.docx` or `.dotx` file.
 
 2. Configuration file locations:
 

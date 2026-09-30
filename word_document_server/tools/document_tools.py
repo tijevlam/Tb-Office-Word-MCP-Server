@@ -55,6 +55,8 @@ async def create_document(
         template_filename: Optional .docx or .dotx template to use
     """
     filename = ensure_docx_extension(filename)
+    if template_filename is None:
+        template_filename = os.getenv("WORD_DOCUMENT_TEMPLATE")
     
     # Check if file is writeable
     is_writeable, error_message = check_file_writeable(filename)
